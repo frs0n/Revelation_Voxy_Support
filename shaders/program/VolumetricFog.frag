@@ -48,6 +48,8 @@ uniform sampler2D shadowcolor1;
 
 #include "/lib/water/WaterFog.glsl"
 
+const float SKY_VOLUMETRIC_FOG_MIN_DENSITY = 0.30;
+
 mat2x3 UnpackFogData(in uvec3 data) {
 	vec2 unpackedZ = unpackHalf2x16(data.z);
 	vec3 scattering = vec3(unpackHalf2x16(data.x), unpackedZ.x);
@@ -99,6 +101,14 @@ void main() {
 
         volFogData[0] = mix(volFogData[0], reprojectedFog[0], blendWeight);
         volFogData[1] = mix(volFogData[1], reprojectedFog[1], blendWeight);
+	}
+
+	// For sky pixels, suppress very thin volumetric fog to avoid visible noise.
+	if (screenPos.z > 1.0 - EPS && isEyeInWater == 0) {
+		float fogDensity = 1.0 - mean(volFogData[1]);
+		if (fogDensity < SKY_VOLUMETRIC_FOG_MIN_DENSITY) {
+			volFogData = mat2x3(vec3(0.0), vec3(1.0));
+		}
 	}
 
 	packedFogData.x = packHalf2x16(volFogData[0].rg);
