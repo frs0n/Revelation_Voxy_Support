@@ -262,6 +262,12 @@ const ivec2 skyMapRes = ivec2(256, 256);
 	#ifdef BLOOM_KARIS_AVERAGE
 	#endif
 
+/* Lens Glare (iterationT-style) */
+	#define ITERATION_LENS_GLARE
+	#define ITERATION_GLARE_BRIGHTNESS 1.0 // [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.7 2.0 2.5 3.0]
+	#define ITERATION_FLARE_BRIGHTNESS 1.0 // [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.7 2.0 2.5 3.0]
+	#define ITERATION_FLARE_SIZE 1.0 // [0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.7 2.0]
+
 /* Exposure */
 	#define MANUAL 0
 	#define AUTO_BASIC 1 // TODO

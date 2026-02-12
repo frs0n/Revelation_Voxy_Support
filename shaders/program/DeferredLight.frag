@@ -210,6 +210,7 @@ void main() {
 		float NdotL = dot(worldNormal, worldLightVector);
 		bool doShadows = NdotL > 1e-3;
 		float nightSoft = saturate(timeMidnight);
+		float dayShadowBoost = saturate(timeNoon + 0.35 * (timeSunrise + timeSunset)) * oms(nightSoft);
 
 		// Shadows and SSS
         if (doShadows || sssAmount > 1e-3) {
@@ -251,7 +252,10 @@ void main() {
 				sceneOut += sunlightBase * sss * SUBSURFACE_SCATTERING_BRIGHTNESS;
 			}
 			if (doShadows) {
-				vec3 directLight = shadow * contactShadow * sunlightBase;
+				vec3 shadowFactor = saturate(shadow * contactShadow);
+				float shadowExponent = mix(1.0, 1.95, dayShadowBoost);
+				shadowFactor = pow(shadowFactor, vec3(shadowExponent));
+				vec3 directLight = shadowFactor * sunlightBase;
 				// Soften moonlit shadows to avoid overly hard night-time contrast.
 				directLight = mix(directLight, sunlightBase, 0.45 * nightSoft);
 

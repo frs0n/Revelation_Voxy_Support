@@ -163,6 +163,7 @@ void main() {
 	FetchNormalData(texelPos, flatNormal, worldNormal);
 
 	float NdotL = dot(worldNormal, worldLightVector);
+	float dayShadowBoost = saturate(timeNoon + 0.35 * (timeSunrise + timeSunset)) * oms(saturate(timeMidnight));
 
 	if (notParticle) {
 		// Specular indirect
@@ -192,7 +193,8 @@ void main() {
 		vec3 shadow = CalculatePCSS(worldPos, normalOffset, dither, surfaceDepth);
 
 		if (dot(shadow, vec3(1.0)) > EPS) {
-			shadow = saturate(shadow) * sunlightMult;
+			float shadowExponent = mix(1.0, 1.95, dayShadowBoost);
+			shadow = pow(saturate(shadow), vec3(shadowExponent)) * sunlightMult;
 
 			if (notParticle) {
 				float NdotV = abs(dot(worldNormal, worldDir));

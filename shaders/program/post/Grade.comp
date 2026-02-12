@@ -41,6 +41,7 @@ const vec2 workGroupsRender = vec2(1.0, 1.0);
 writeonly uniform image2D colorimg8; // LDR output
 
 #include "/lib/universal/Uniform.glsl"
+#include "/lib/universal/Transform.glsl"
 
 //======// SSBO //================================================================================//
 
@@ -58,6 +59,114 @@ const vec2 bloomTileOffset[6] = vec2[6](
 	vec2(0.3125, 0.6250),
 	vec2(0.3150, 0.6563)
 );
+
+#ifdef ITERATION_LENS_GLARE
+vec2 LensDistortOffset(in vec2 uv, in vec2 pxOffset) {
+	vec2 toCenter = uv;
+	vec3 prep = normalize(vec3(toCenter.y, -toCenter.x, 0.0));
+
+	float angle = length(toCenter) * 2.221 * 1.0;
+	vec3 oldOffset = vec3(pxOffset, 0.0);
+	vec3 rotated = oldOffset * cos(angle) + cross(prep, oldOffset) * sin(angle) + prep * dot(prep, oldOffset) * (1.0 - cos(angle));
+	return rotated.xy;
+}
+
+vec3 LensFlarePoint(in vec2 uv, in vec2 pos, in float dist, in float chromaOffset, in float size) {
+	pos = LensDistortOffset(uv, pos);
+
+	float r = max(0.01 - pow(length(uv + (dist - chromaOffset) * pos), 2.4) * (1.0 / (size * 2.0)), 0.0) * 0.85;
+	float g = max(0.01 - pow(length(uv +  dist                 * pos), 2.4) * (1.0 / (size * 2.0)), 0.0) * 1.0;
+	float b = max(0.01 - pow(length(uv + (dist + chromaOffset) * pos), 2.4) * (1.0 / (size * 2.0)), 0.0) * 1.5;
+
+	return vec3(r, g, b);
+}
+
+vec3 LensFlareOrb(in vec2 uv, in vec2 pos, in float dist, in float size) {
+	vec3 c = vec3(0.0);
+
+	for (float i = 0.0; i < 6.0; i++) {
+		float j = i + 1.0;
+		float offset = j / (j + 0.1);
+		float colOffset = j / 6.0 * 0.5;
+		float ss = size / (j + 1.0);
+
+		c += LensFlarePoint(uv, pos, dist + offset, ss * 2.0, ss) * vec3(1.0 - colOffset, 1.0, 0.5 + colOffset) * j;
+	}
+
+	c += LensFlarePoint(uv, pos, dist + 0.8, 0.05, 3.0 * size) * 0.5;
+	return c;
+}
+
+vec3 LensFlareRing(in vec2 uv, in vec2 pos, in float dist, in float chromaOffset, in float blur) {
+	vec2 uvd = uv * length(uv);
+
+	float r = max(1.0 / (1.0 + 250.0 * pow(length(uvd + (dist - chromaOffset) * pos), blur)), 0.0) * 0.8;
+	float g = max(1.0 / (1.0 + 250.0 * pow(length(uvd +  dist                 * pos), blur)), 0.0) * 1.0;
+	float b = max(1.0 / (1.0 + 250.0 * pow(length(uvd + (dist + chromaOffset) * pos), blur)), 0.0) * 1.5;
+
+	return vec3(r, g, b);
+}
+
+float SunVisibilityEstimate(in vec2 sunCoord, in float dayFactor) {
+	float inFront = step(sunPosition.z, -1e-3);
+	float onScreen = step(0.0, sunCoord.x) * step(0.0, sunCoord.y) * step(sunCoord.x, 1.0) * step(sunCoord.y, 1.0);
+	float edgeVisibility = smoothstep(0.5, 0.45, abs(sunCoord.x - 0.5)) * smoothstep(0.5, 0.45, abs(sunCoord.y - 0.5));
+	float depthVisibility = step(1.0 - 1e-4, textureLod(depthtex0, clamp(sunCoord, 0.0, 1.0), 0.0).x);
+	float weatherVisibility = 1.0 - rainStrength * 0.85;
+	float eyeVisibility = float(isEyeInWater == 0);
+	return inFront * onScreen * edgeVisibility * depthVisibility * weatherVisibility * eyeVisibility * dayFactor;
+}
+
+void AddIterationLensGlare(inout vec3 scene, in ivec2 texel) {
+	float dayFactor = saturate(timeNoon * 1.15 + 0.35 * (timeSunrise + timeSunset));
+	if (dayFactor < 1e-3) return;
+
+	vec2 uv = texelToUv(texel);
+	vec2 sunCoord = ViewToScreenSpaceRaw(sunPosition).xy;
+	float sunVisibility = SunVisibilityEstimate(sunCoord, dayFactor);
+	if (sunVisibility < 1e-4) return;
+
+	vec2 coord = uv - 0.5;
+	vec2 sunPos = sunCoord - 0.5;
+	coord.x *= aspectRatio;
+	sunPos.x *= aspectRatio;
+
+	float fovFactor = max(gbufferProjection[1][1], 2.0);
+
+	vec2 v = coord - sunPos;
+	float dist = length(v);
+	float gDist = dist * 13.0 / fovFactor;
+	float phase = atan(v.y, v.x) + 0.131;
+
+	float gl = 2.0 - saturate(gDist) + sin(phase * 12.0) * saturate(gDist * 2.5 - 0.2);
+	gl = gl * gl;
+	gDist = gDist * gDist;
+	gl *= 8e-5 / max(gDist * gDist, 1e-5);
+	gl = min(gl, 200.0);
+
+	float size = 0.5 * fovFactor * ITERATION_FLARE_SIZE;
+	vec3 fl = vec3(0.0);
+	fl += LensFlareOrb(coord, sunPos, 0.0, size * 0.01) * 0.1;
+	fl += LensFlareRing(coord, sunPos,  1.0, 0.02, 1.4) * 0.01;
+	fl += LensFlareRing(coord, sunPos, -1.0, 0.02, 1.4) * 0.01;
+	fl += LensFlarePoint(coord, sunPos, -2.00, 0.05, size * 0.05) * 0.5;
+	fl += LensFlarePoint(coord, sunPos, -0.90, 0.02, size * 0.03) * 0.3;
+	fl += LensFlarePoint(coord, sunPos, -0.70, 0.01, size * 0.06) * 0.5;
+	fl += LensFlarePoint(coord, sunPos, -0.55, 0.02, size * 0.02) * 0.2;
+	fl += LensFlarePoint(coord, sunPos, -0.35, 0.02, size * 0.04) * 0.7;
+	fl += LensFlarePoint(coord, sunPos, -0.25, 0.01, size * 0.15) * vec3(0.3, 0.4, 0.38);
+	fl += LensFlarePoint(coord, sunPos, -0.25, 0.02, size * 0.08) * 0.2;
+	fl += LensFlarePoint(coord, sunPos,  0.05, 0.01, size * 0.03) * 0.1;
+	fl += LensFlarePoint(coord, sunPos,  0.30, 0.02, size * 0.20) * vec3(0.2, 0.18, 0.14);
+	fl += LensFlarePoint(coord, sunPos,  1.20, 0.03, size * 0.10) * 0.2;
+
+	vec3 sunTint = mix(vec3(1.0, 0.94, 0.86), vec3(1.0, 0.98, 0.94), saturate(timeNoon + 0.15));
+	vec3 lens = vec3(gl * ITERATION_GLARE_BRIGHTNESS) + fl * (ITERATION_FLARE_BRIGHTNESS * 0.3);
+	lens *= sunTint * sunVisibility * 0.2;
+
+	scene += max0(lens);
+}
+#endif
 
 void CombineBloomAndFog(inout vec3 scene, in ivec2 texel, in float exposure) {
 	vec3 bloomData = vec3(0.0);
@@ -188,6 +297,10 @@ void main() {
 	// Bloom and fog
 	#ifdef BLOOM
 		CombineBloomAndFog(color, texelPos, exposure);
+	#endif
+
+	#ifdef ITERATION_LENS_GLARE
+		AddIterationLensGlare(color, texelPos);
 	#endif
 
 	// Debug sky environment map
