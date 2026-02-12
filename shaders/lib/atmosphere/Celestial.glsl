@@ -9,7 +9,9 @@
 //================================================================================================//
 
 vec3 RenderSun(in vec3 worldDir, in vec3 sunVector) {
-    const float cosRadius = cos(atmosphereModel.sun_angular_radius * SUN_RADIUS_MULT);
+    // Daytime-only "1.8" profile: shrink apparent sun disk; non-day keeps default size.
+    float sunRadiusMult = mix(SUN_RADIUS_MULT, 1.0, timeNoon);
+    float cosRadius = cos(atmosphereModel.sun_angular_radius * sunRadiusMult);
 	const vec3 sunIlluminance = atmosphereModel.solar_irradiance * SUN_SPECTRAL_RADIANCE_TO_LUMINANCE;
     const vec3 sunRadiance = sunIlluminance / (TAU * oms(cosRadius));
 

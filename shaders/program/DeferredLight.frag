@@ -209,6 +209,7 @@ void main() {
 
 		float NdotL = dot(worldNormal, worldLightVector);
 		bool doShadows = NdotL > 1e-3;
+		float nightSoft = saturate(timeMidnight);
 
 		// Shadows and SSS
         if (doShadows || sssAmount > 1e-3) {
@@ -250,12 +251,14 @@ void main() {
 				sceneOut += sunlightBase * sss * SUBSURFACE_SCATTERING_BRIGHTNESS;
 			}
 			if (doShadows) {
-				shadow *= contactShadow * sunlightBase;
+				vec3 directLight = shadow * contactShadow * sunlightBase;
+				// Soften moonlit shadows to avoid overly hard night-time contrast.
+				directLight = mix(directLight, sunlightBase, 0.45 * nightSoft);
 
 				// Apply parallax shadows
 				#ifdef PARALLAX_SHADOW
 					#if defined PARALLAX && !defined PARALLAX_DEPTH_WRITE
-						shadow *= oms(loadSceneMain(texelPos).x);
+						directLight *= oms(loadSceneMain(texelPos).x);
 					#endif
 				#endif
 
@@ -264,7 +267,7 @@ void main() {
 				float NdotH = dot(worldNormal, halfway);
 				float LdotH = dot(worldLightVector, halfway);
 
-				sceneOut += shadow * DiffuseHammon(LdotV, NdotV, NdotL, NdotH, material.roughness, albedo);
+				sceneOut += directLight * DiffuseHammon(LdotV, NdotV, NdotL, NdotH, material.roughness, albedo);
 
 				#if defined MC_SPECULAR_MAP
 					vec3 f0 = GetMaterialF0(material.metalness, albedo);
@@ -272,7 +275,8 @@ void main() {
 					const vec3 f0 = vec3(DEFAULT_DIELECTRIC_F0);
 				#endif
 
-				specularDirect = shadow * SpecularGGX(LdotH, NdotV, NdotL, NdotH, material.roughness, f0);
+				specularDirect = directLight * SpecularGGX(LdotH, NdotV, NdotL, NdotH, material.roughness, f0);
+				specularDirect *= mix(1.0, 0.8, nightSoft);
 			}
 		}
 
@@ -352,8 +356,12 @@ void main() {
 			#endif
 		#endif
 
-		// Minimal ambient light
-		sceneOut += (worldNormal.y * 0.4 + 0.6) * max(MINIMUM_AMBIENT_BRIGHTNESS, 5e-3 * nightVision) * ao;
+		// Daytime-only "1.8" profile: darker ambient floor for stronger contrast.
+		float daytimeAmbient = mix(MINIMUM_AMBIENT_BRIGHTNESS, 3e-5, timeNoon);
+		float softenedNightAmbient = mix(daytimeAmbient, max(daytimeAmbient, 2e-4), nightSoft);
+		sceneOut += (worldNormal.y * 0.4 + 0.6) * max(softenedNightAmbient, 5e-3 * nightVision) * ao;
+		// Extra night fill light to reduce dead-dark pockets while keeping shape.
+		sceneOut += vec3(0.025) * nightSoft * saturate(lightmap.y) * ao;
 
 		// Apply albedo (for diffuse)
 		sceneOut *= albedo;

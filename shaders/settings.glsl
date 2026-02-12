@@ -28,7 +28,7 @@ const float realShadowMapRes = float(shadowMapResolution) * MC_SHADOW_QUALITY;
 
 const ivec2 skyMapRes = ivec2(256, 256);
 
-#define SUN_RADIUS_MULT 1.0 // Multiplier of the sun radius (1.0 = real sun radius). [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 26.0 27.0 28.0 29.0 30.0 31.0 32.0 33.0 34.0 35.0 36.0 37.0 38.0 39.0 40.0]
+#define SUN_RADIUS_MULT 2.0 // Multiplier of the sun radius (1.0 = real sun radius). [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 26.0 27.0 28.0 29.0 30.0 31.0 32.0 33.0 34.0 35.0 36.0 37.0 38.0 39.0 40.0]
 
 /* Clouds */
 	#define CLOUDS
@@ -124,8 +124,8 @@ const ivec2 skyMapRes = ivec2(256, 256);
 	#define BLOCKLIGHT_TEMPERATURE 3000 // Color temperature of the block light. [1000 1500 2000 2300 2500 3000 3400 3500 4000 4500 5000 5500 6000]
 
 /* Lighting Brightness */
-	#define MINIMUM_AMBIENT_BRIGHTNESS 0.00003 // Minimum brightness of the ambient light. [0.0 0.00001 0.00002 0.00003 0.00005 0.00007 0.0001 0.0002 0.0003 0.0004 0.0005 0.0006 0.0007 0.0008 0.0009 0.001 0.0015 0.002 0.0025 0.003 0.004 0.005 0.006 0.007 0.01 0.05 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
-	#define NIGHT_BRIGHTNESS 0.7 // Brightness of the night. [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.7 2.0 2.5 3.0 4.0 5.0 7.0 10.0]
+	#define MINIMUM_AMBIENT_BRIGHTNESS 0.0001 // Minimum brightness of the ambient light. [0.0 0.00001 0.00002 0.00003 0.00005 0.00007 0.0001 0.0002 0.0003 0.0004 0.0005 0.0006 0.0007 0.0008 0.0009 0.001 0.0015 0.002 0.0025 0.003 0.004 0.005 0.006 0.007 0.01 0.05 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+	#define NIGHT_BRIGHTNESS 1.0 // Brightness of the night. [0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.7 2.0 2.5 3.0 4.0 5.0 7.0 10.0]
 
 /* Global Illumination */
 	#define SSILVB_ENABLED
@@ -134,7 +134,7 @@ const ivec2 skyMapRes = ivec2(256, 256);
 	// #define SSPT_ENABLED // Enables screen-space path tracing
 	// #define RSM_ENABLED // Enables reflective shadow maps
 
-	#define SSILVB_BLENDED_LIGHTMAP 0.35 // [0.0 0.01 0.02 0.05 0.07 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.6 0.7 0.8 0.9 1.0]
+	#define SSILVB_BLENDED_LIGHTMAP 0.25 // [0.0 0.01 0.02 0.05 0.07 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.6 0.7 0.8 0.9 1.0]
 	// #define SSPT_BLENDED_LIGHTMAP 0.25 // [0.0 0.01 0.02 0.05 0.07 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.6 0.7 0.8 0.9 1.0]
 
 	#define SSILVB_MAX_ACCUM_FRAMES 48.0 // [20.0 24.0 28.0 32.0 36.0 40.0 48.0 56.0 64.0 72.0 80.0 96.0 112.0 128.0 144.0 160.0 192.0 224.0 256.0 320.0 384.0 448.0 512.0 640.0 768.0 896.0 1024.0]
@@ -152,7 +152,7 @@ const ivec2 skyMapRes = ivec2(256, 256);
 	#define COLORED_SHADOWS // Enables shadow stained glass tint
 
 	#define SCREEN_SPACE_SHADOWS // Enables screen space shadows
-	#define SCREEN_SPACE_SHADOWS_SAMPLES 20 // Sample count of screen space shadows. [2 4 6 8 9 10 12 14 15 16 18 20 22 24 26 28 30 40 50 70 100 150 200 300 500]
+	#define SCREEN_SPACE_SHADOWS_SAMPLES 16 // Sample count of screen space shadows. [2 4 6 8 9 10 12 14 15 16 18 20 22 24 26 28 30 40 50 70 100 150 200 300 500]
 
 	// #define SHADOW_BACKFACE_CULLING // Enables backface culling for shadows
 
@@ -270,15 +270,15 @@ const ivec2 skyMapRes = ivec2(256, 256);
 
 	#define AUTO_EV_MIN -9.0 // Minimum EV value for auto exposure. [-32.0 -31.0 -30.0 -29.0 -28.0 -27.0 -26.0 -25.0 -24.0 -23.0 -22.0 -21.0 -20.0 -19.0 -18.0 -17.0 -16.0 -15.0 -14.0 -13.0 -12.0 -11.0 -10.0 -9.0 -8.0 -7.0 -6.0 -5.0 -4.0 -3.0 -2.0 -1.0 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 26.0 27.0 28.0 29.0 30.0 31.0 32.0]
 	#define AUTO_EV_MAX 16.0 // Maximum EV value for auto exposure. [-32.0 -31.0 -30.0 -29.0 -28.0 -27.0 -26.0 -25.0 -24.0 -23.0 -22.0 -21.0 -20.0 -19.0 -18.0 -17.0 -16.0 -15.0 -14.0 -13.0 -12.0 -11.0 -10.0 -9.0 -8.0 -7.0 -6.0 -5.0 -4.0 -3.0 -2.0 -1.0 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 26.0 27.0 28.0 29.0 30.0 31.0 32.0]
-	#define AUTO_EV_BIAS -0.1 // EV bias for auto exposure. [-2.0 -1.9 -1.8 -1.7 -1.6 -1.5 -1.4 -1.3 -1.2 -1.1 -1.0 -0.9 -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
+	#define AUTO_EV_BIAS 0.0 // EV bias for auto exposure. [-2.0 -1.9 -1.8 -1.7 -1.6 -1.5 -1.4 -1.3 -1.2 -1.1 -1.0 -0.9 -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
 	#define MANUAL_EV 2.0 // Manual exposure value. [0.1 0.3 0.5 1.0 1.5 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 12.0 14.0 16.0 18.0 20.0 25.0 30.0 40.0 50.0]
 
 	#define EXPOSURE_SPEED_UP 2.0 // Dim to bright speed. [0.5 0.6 0.7 0.8 0.9 1.0 1.2 1.6 2.0 2.5 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 25.0 30.0 40.0 50.0]
 	#define EXPOSURE_SPEED_DOWN 1.0 // Bright to dim speed. [0.5 0.6 0.7 0.8 0.9 1.0 1.2 1.6 2.0 2.5 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 25.0 30.0 40.0 50.0]
 
 	#define HISTOGRAM_BIN_COUNT 128 // Number of bins for the histogram. [32 64 128 256]
-	#define HISTOGRAM_LOWER_BOUND 0.45 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
-	#define HISTOGRAM_UPPER_BOUND 0.75 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+	#define HISTOGRAM_LOWER_BOUND 0.4 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+	#define HISTOGRAM_UPPER_BOUND 0.8 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
 
 /* FidelityFX */
 	#define CAS_ENABLED // Sharpens the final image using AMD FidelityFX CAS (Contrast-Adaptive Sharpening)

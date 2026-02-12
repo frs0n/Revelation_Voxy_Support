@@ -193,7 +193,9 @@ void main() {
             // Vanilla lightmap blending
             float blocklight = Unpack2x8UX(loadMaterialPack(renderTexel).x);
             blocklight = pow5(blocklight) * exp2(-16.0 * indirectCurrent.x * exposure.value);
-            indirectCurrent.rgb += RGBToYCoCg(blackbody(float(BLOCKLIGHT_TEMPERATURE))) * saturate(blocklight) * SSILVB_BLENDED_LIGHTMAP;
+            // Daytime-only "1.8" profile: slightly stronger lightmap blend.
+            float dayLightmapBlend = mix(SSILVB_BLENDED_LIGHTMAP, 0.35, timeNoon);
+            indirectCurrent.rgb += RGBToYCoCg(blackbody(float(BLOCKLIGHT_TEMPERATURE))) * saturate(blocklight) * dayLightmapBlend;
 
             imageStore(colorimg2, texelPos, indirectHistory);
             imageStore(colorimg2, texelPos + ivec2(halfViewSize.x, 0), vec4(OctEncodeSnorm(worldNormal), viewDistance, 1.0));
