@@ -81,6 +81,12 @@ mat2x3 RaymarchAtmosphericFog(in vec3 startPos, in vec3 endPos, in float dither,
 
 	float LdotV = dot(worldLightVector, worldDir);
 	vec2 phase = vec2(AerosolPhase(LdotV), RayleighPhase(LdotV));
+	float tyndallStrength = max(VF_TYNDALL_STRENGTH, 1.0);
+	float tyndallAmount = tyndallStrength - 1.0;
+
+	// Boost forward Mie scattering to get stronger visible light shafts (Tyndall).
+	float forwardPeak = pow8(saturate(LdotV));
+	phase.x *= 1.0 + tyndallAmount * (0.6 + 2.0 * forwardPeak);
 
 	float mieDensityMult = VF_MIE_DENSITY * (1.0 + wetness * VF_MIE_DENSITY_RAIN_MULT);
 
@@ -90,6 +96,7 @@ mat2x3 RaymarchAtmosphericFog(in vec3 startPos, in vec3 endPos, in float dither,
 
 	vec3 fogMieExtinction = atmosphereModel.mie_extinction * mieDensityMult;
 	vec3 fogMieScattering = atmosphereModel.mie_scattering * mieDensityMult;
+	fogMieScattering *= 1.0 + tyndallAmount * 0.75;
 
 	#ifdef PER_BIOME_FOG
 		vec3 biomeAlbedo = mix(vec3(1.0), vec3(1.1, 0.9, 0.7), biomeSandstorm);
