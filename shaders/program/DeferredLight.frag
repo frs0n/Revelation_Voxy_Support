@@ -360,8 +360,8 @@ void main() {
 		float daytimeAmbient = mix(MINIMUM_AMBIENT_BRIGHTNESS, 3e-5, timeNoon);
 		float softenedNightAmbient = mix(daytimeAmbient, max(daytimeAmbient, 2e-4), nightSoft);
 		sceneOut += (worldNormal.y * 0.4 + 0.6) * max(softenedNightAmbient, 5e-3 * nightVision) * ao;
-		// Extra night fill light to reduce dead-dark pockets while keeping shape.
-		sceneOut += vec3(0.025) * nightSoft * saturate(lightmap.y) * ao;
+		// Extra moon-tinted fill light to reduce dead-dark pockets while keeping shape.
+		sceneOut += vec3(0.015, 0.020, 0.032) * nightSoft * saturate(lightmap.y) * ao;
 
 		// Apply albedo (for diffuse)
 		sceneOut *= albedo;

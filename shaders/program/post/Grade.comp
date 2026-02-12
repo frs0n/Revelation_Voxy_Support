@@ -107,12 +107,37 @@ vec3 ScotopicVision(in vec3 color, in float exposure) {
 
 	float rodLuminance = dot(scotopic * XYZ_2_sRGB, rodResponse);
 	float mesopicFactor = saturate(log2(1.0 + exposure) / (2.0 + 4.0 * rodLuminance));
+	float nightFactor = saturate(timeMidnight + 0.3 * (timeSunset + timeSunrise));
+	mesopicFactor *= nightFactor * saturate(0.35 + 0.65 * cube(max(eyeSkylightSmooth, rodLuminance)));
 
 	#ifdef PURKINJE_SHIFT_NOISE
 		rodLuminance *= 0.5 + SampleStbnVec1(ivec2(gl_GlobalInvocationID.xy), frameCounter);
 	#endif
 
 	return mix(color, rodLuminance * tint, PURKINJE_SHIFT_STRENGTH * mesopicFactor);
+}
+
+vec3 PhotonNightGrade(in vec3 color) {
+	float nightFactor = saturate(timeMidnight + 0.35 * (timeSunset + timeSunrise));
+	if (nightFactor < 1e-3) return color;
+
+	float luma = luminance(color);
+	float shadowMask = saturate(1.0 - luma * 2.0);
+	float gradeAmount = nightFactor * (0.35 + 0.65 * shadowMask) * (0.4 + 0.6 * saturate(1.0 - eyeSkylightSmooth));
+
+	// Photon-like night look: cooler, slightly less saturated, softened darks.
+	color = mix(vec3(luma), color, 1.0 - 0.18 * gradeAmount);
+	color *= mix(vec3(1.0), vec3(0.92, 0.98, 1.08), 0.45 * gradeAmount);
+
+	// Lower green saturation at night and push green hues slightly toward blue.
+	float greenMask = saturate((color.g - max(color.r, color.b)) * 3.0);
+	float greenShift = gradeAmount * greenMask;
+	color.g *= 1.0 - 0.22 * greenShift;
+	color.b += color.g * 0.10 * greenShift;
+
+	// Add a small deep-blue fill in darker regions.
+	color += vec3(0.0, 0.002, 0.014) * gradeAmount * shadowMask;
+	return max0(color);
 }
 
 vec3 None(in vec3 x) {
@@ -194,12 +219,30 @@ void main() {
 
 		// Tone mapping
 		color = TONE_MAPPER(color);
+		color = PhotonNightGrade(color);
 
 		// DRT to working space
 		// color *= Rec2020_2_sRGB;
 
 		// Working to display space
 		color = saturate(linearToSRGB(color));
+
+		// Slightly boost overall contrast in day/twilight, excluding deep night.
+		float nonNight = saturate(1.0 - timeMidnight);
+		float dayLike = saturate(timeNoon + 0.35 * (timeSunrise + timeSunset));
+		float contrastBoost = 1.0 + 0.10 * dayLike * nonNight;
+		color = saturate((color - 0.5) * contrastBoost + 0.5);
+
+		// Slightly reduce saturation for non-night, non-sky pixels.
+		float skyMask = step(1.0 - EPS, loadDepth0(texelPos));
+		float satReduce = 0.08 * dayLike * nonNight * (1.0 - skyMask);
+		color = mix(color, vec3(luminance(color)), satReduce);
+
+		// Slight global green desaturation.
+		float greenLuma = luminance(color);
+		float greenDominance = saturate(color.g - max(color.r, color.b));
+		float greenDesat = 0.04 + 0.08 * greenDominance;
+		color.g = mix(color.g, greenLuma, greenDesat);
 	}
 
 	// Debug tone mapping plot
